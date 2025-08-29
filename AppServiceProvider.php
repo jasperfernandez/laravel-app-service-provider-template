@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configurePasswordValidation();
         $this->configureVite();
         $this->configureScheme();
+        $this->configureResourceSerialization();
     }
 
     /**
@@ -40,7 +42,7 @@ class AppServiceProvider extends ServiceProvider
     private function configureCommands(): void
     {
         DB::prohibitDestructiveCommands(
-            app()->isProduction()
+            $this->app->isProduction()
         );
     }
 
@@ -49,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configureModels(): void
     {
-        Model::shouldBeStrict(!app()->isProduction());
+        Model::shouldBeStrict(!$this->app->isProduction());
         Model::automaticallyEagerLoadRelationships();
         Model::unguard();
     }
@@ -59,7 +61,7 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configurePasswordValidation(): void
     {
-        Password::defaults(fn() => app()->isProduction() ? Password::min(8)->uncompromised() : null);
+        Password::defaults(fn() => $this->app->isProduction() ? Password::min(8)->uncompromised() : null);
     }
 
     /**
@@ -75,16 +77,24 @@ class AppServiceProvider extends ServiceProvider
      */
     public function configureVite(): void
     {
-        Vite::prefetch(concurrency: 3);
+        Vite::useAggressivePrefetching();
     }
 
     /**
      * Configure application scheme
      */
-    public function configureScheme()
+    public function configureScheme(): void
     {
-        if (app()->isProduction()) {
+        if ($this->app->isProduction()) {
             URL::forceHttps();
         }
+    }
+
+    /**
+     * Configure resource serialization.
+     */
+    private function configureResourceSerialization(): void
+    {
+        JsonResource::withoutWrapping();
     }
 }
